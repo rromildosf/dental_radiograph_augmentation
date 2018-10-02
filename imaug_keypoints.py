@@ -54,7 +54,7 @@ def make_augumentation( image_coords, seq=None ):
     for i in range(len(bbs.bounding_boxes)):
         after = bbs_aug.bounding_boxes[i]
 
-        bb = [after.x1_int, after.x2_int, after.y1_int, after.y2_int]
+        bb = [after.x1_int, after.y1_int, after.x2_int, after.y2_int]
         
         if (  after.x1_int < 0 or  after.x1_int > w or after.x2_int < 0 or after.x2_int > w or
             after.y1_int < 0 or  after.y1_int > h or after.y2_int < 0 or after.y2_int > h ):
@@ -65,7 +65,7 @@ def make_augumentation( image_coords, seq=None ):
         
     image_after =  bbs_aug.draw_on_image(image_aug, thickness=2, color=[0, 0, 255])
 
-    return image_after, image_aug, points_aug
+    return image_aug, image_after, points_aug
 
 
    
@@ -238,11 +238,11 @@ def make_augs():
             iaa.SomeOf((0, 3),[
                 iaa.Multiply((1.2, 1.5)), # change brightness, doesn't affect keypoints
                 iaa.Affine( rotate=-10, scale=(1.1, 0.8), shear=-15 ), # rotate by exactly 10deg and scale to 50-70%, affects keypoints
-                iaa.GaussianBlur((0, 3.0)), iaa.Affine(translate_px={"x": (-40, 40)})
+                iaa.GaussianBlur((0, 3.0))
             ], random_order=True ),
             sometimes(
                 iaa.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, individually per axis
-                    translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
+                    # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
                     rotate=(-270, 180), # rotate by -45 to +45 degrees
                     shear=(-16, 16), # shear by -16 to +16 degrees
                     order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
@@ -250,7 +250,7 @@ def make_augs():
                     mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
             )),
             iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5), # improve or worsen the contrast,
-            iaa.GaussianBlur((0, 3.0)), iaa.Affine(translate_px={"x": (-40, 40)})
+            iaa.GaussianBlur((0, 3.0))
         ], random_order=True)) 
 
     return seqs
@@ -278,7 +278,7 @@ def save_imgaug( images, imgs_path=None, ann_path=None, count_from=0 ):
             # print( 'Saved!' )
     # print('Done!')
 
-def init( img_coords ):
+def init( img_coords, save_path_imgs, save_path_anns ):
     images = []
     print("Applying augumentation")
     counter = 723
@@ -290,7 +290,7 @@ def init( img_coords ):
         counter+=1
 
         counter += len(res)
-        save_imgaug( [res], './imgs', './annotations', count_from=counter )
+        save_imgaug( [res], save_path_imgs, save_path_anns, count_from=counter )
 
         # except MemoryError as merror:
         #     print('Error on augument image: ' + image[0] + ', skipping.')
@@ -301,11 +301,14 @@ def init( img_coords ):
 """
 Constants for path of the images and annotations
 """
-IMGS_PATH = '../caries/imgs'
-ANNS_PATH = '../caries/annotations'
+LOAD_IMGS_PATH = '../caries/imgs'
+LOAD_ANNS_PATH = '../caries/annotations'
+
+SAVE_IMGS_PATH = './imgs'
+SAVE_ANNS_PATH = './annotations'
 
 ia.seed(21)
-coords = loader.get_coords( IMGS_PATH, ANNS_PATH )
-init( coords )
+coords = loader.get_coords( LOAD_IMGS_PATH, LOAD_ANNS_PATH )
+init( coords, SAVE_IMGS_PATH, SAVE_ANNS_PATH )
 
 # show_images( coords )
