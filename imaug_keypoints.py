@@ -6,7 +6,7 @@ import cv2 as cv
 
 def apply_aug( img_coords, seqs ):
     images = []
-    for i in range( 4 ):
+    for i in range( 10 ):
         try :
             aug = make_augumentation( img_coords, seqs[0] )
             images.append( aug )
@@ -16,16 +16,13 @@ def apply_aug( img_coords, seqs ):
     return images
 
 def augument( img_coords, seq ):
-    # images = [ np.copy(img_coords) for i in range(5) ]
-    # seq.augment_images( images )
-    image = cv.imread( '{}/{}'.format(IMGS_PATH, img_coords[0]) )
+    image = cv.imread( '{}/{}'.format(LOAD_IMGS_PATH, img_coords[0]) )
     images = []
     for i in range(5):
         images.append( image )
     aug = seq.augment_images( images )
     return images
-    # print( images[0].shape )
-    # print( aug )
+
 
 def apply_aug2( img_coords, seqs ):
     images = []
@@ -34,7 +31,7 @@ def apply_aug2( img_coords, seqs ):
     return images
 
 def make_augumentation( image_coords, seq=None ):
-    image = cv.imread( '{}/{}'.format(IMGS_PATH, image_coords[0]) )
+    image = cv.imread( '{}/{}'.format(LOAD_IMGS_PATH, image_coords[0]) )
     points = []
     
     for i in image_coords[1]:
@@ -51,21 +48,42 @@ def make_augumentation( image_coords, seq=None ):
 
     w, h = image.shape[:2]
     # print( '{}  {}'.format( w, h ) )
+    # print( image_coords[0] )
     for i in range(len(bbs.bounding_boxes)):
         after = bbs_aug.bounding_boxes[i]
+        x1 = after.x1_int 
+        y1 = after.y1_int 
+        x2 = after.x2_int 
+        y2 = after.y2_int 
 
-        bb = [after.x1_int, after.y1_int, after.x2_int, after.y2_int]
+        bb = [x1, y1, x2, y2]
+
+        x1 = 2 if x1 < 0 else x1 
+        x1 = w-2 if x1 > w else x1 
+
+        y1 = 2 if y1 < 0 else y1 
+        y1 = h-2 if y1 > h else y1 
         
-        if (  after.x1_int < 0 or  after.x1_int > w or after.x2_int < 0 or after.x2_int > w or
-            after.y1_int < 0 or  after.y1_int > h or after.y2_int < 0 or after.y2_int > h ):
+        x2 = 2 if x2 < 0 else x2
+        x2 = w-2 if x2 > w else x2
+        
+        y2 = 2 if y2 < 0 else y2
+        y2 = h-2 if y2 > h else y2
+        
+        print( image_coords[0] )
+        if image_coords[0] == '308004P09.JPEG':
+            print( '\n\n\n\n{} {} {} {}\n\n\n\n'.format( x1, y1, x2, y2 ))
+
+        if ( x1 < 0 or  x1 > w or x2 < 0 or x2 > w or
+            y1 < 0 or  y1 > h or y2 < 0 or y2 > h ):
             # print(' ******* Has incorrect boundings.' )
-            raise ValueError('Has incorrect boundings.')  
+            raise ValueError(' ******************Has incorrect boundings.')  
          
-        points_aug.append( bb )
+        points_aug.append( [x1, y1, x2, y2] )
         
     image_after =  bbs_aug.draw_on_image(image_aug, thickness=2, color=[0, 0, 255])
 
-    return image_aug, image_after, points_aug
+    return image_after, image_aug, points_aug
 
 
    
@@ -92,81 +110,6 @@ def show_images( images ):
     cv.destroyAllWindows()
 
 
-def heavy_aug():
-    sometimes = lambda aug: iaa.Sometimes(0.5, aug)
-
-    # Define our sequence of augmentation steps that will be applied to every image
-    # All augmenters with per_channel=0.5 will sample one value _per image_
-    # in 50% of all cases. In all other cases they will sample new values
-    # _per channel_.
-    seq = iaa.Sequential(
-        [
-            # apply the following augmenters to most images
-            iaa.Fliplr(0.5), # horizontally flip 50% of all images
-            iaa.Flipud(0.2), # vertically flip 20% of all images
-            # crop images by -5% to 10% of their height/width
-            sometimes(iaa.CropAndPad(
-                percent=(-0.05, 0.1),
-                pad_mode=ia.ALL,
-                pad_cval=(0, 255)
-            )),
-            sometimes(iaa.Affine(
-                scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, individually per axis
-                translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
-                rotate=(-45, 45), # rotate by -45 to +45 degrees
-                shear=(-16, 16), # shear by -16 to +16 degrees
-                order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
-                cval=(0, 255), # if mode is constant, use a cval between 0 and 255
-                mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
-            )),
-            # execute 0 to 5 of the following (less important) augmenters per image
-            # don't execute all of them, as that would often be way too strong
-            iaa.SomeOf((0, 5),
-                [
-                    sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))), # convert images into their superpixel representation
-                    iaa.OneOf([
-                        iaa.GaussianBlur((0, 3.0)), # blur images with a sigma between 0 and 3.0
-                        iaa.AverageBlur(k=(2, 7)), # blur image using local means with kernel sizes between 2 and 7
-                        iaa.MedianBlur(k=(3, 11)), # blur image using local medians with kernel sizes between 2 and 7
-                    ]),
-                    iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)), # sharpen images
-                    iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)), # emboss images
-                    # search either for all edges or for directed edges,
-                    # blend the result with the original image using a blobby mask
-                    iaa.SimplexNoiseAlpha(iaa.OneOf([
-                        iaa.EdgeDetect(alpha=(0.5, 1.0)),
-                        iaa.DirectedEdgeDetect(alpha=(0.5, 1.0), direction=(0.0, 1.0)),
-                    ])),
-                    iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255), per_channel=0.5), # add gaussian noise to images
-                    iaa.OneOf([
-                        iaa.Dropout((0.01, 0.1), per_channel=0.5), # randomly remove up to 10% of the pixels
-                        iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
-                    ]),
-                    iaa.Invert(0.05, per_channel=True), # invert color channels
-                    iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
-                    iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
-                    # either change the brightness of the whole image (sometimes
-                    # per channel) or change the brightness of subareas
-                    iaa.OneOf([
-                        iaa.Multiply((0.5, 1.5), per_channel=0.5),
-                        iaa.FrequencyNoiseAlpha(
-                            exponent=(-4, 0),
-                            first=iaa.Multiply((0.5, 1.5), per_channel=True),
-                            second=iaa.ContrastNormalization((0.5, 2.0))
-                        )
-                    ]),
-                    iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5), # improve or worsen the contrast
-                    iaa.Grayscale(alpha=(0.0, 1.0)),
-                    sometimes(iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)), # move pixels locally around (with random strengths)
-                    sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))), # sometimes move parts of the image around
-                    sometimes(iaa.PerspectiveTransform(scale=(0.01, 0.1)))
-                ],
-                random_order=True
-            )
-        ],
-        random_order=True
-    )
-    return seq
 
 def make_augs():
     seqs = []
@@ -226,39 +169,39 @@ def make_augs():
     sometimes = lambda aug: iaa.Sometimes(0.5, aug)
 
     seqs.append(
+        # iaa.Sequential([
+        #     iaa.SomeOf((0, 5),[
+        #         iaa.Affine( rotate=10, scale=(1.2, 1.2), shear=15 ),
+        #         iaa.Affine( rotate=-35, scale=(1.2, 1.2), shear=-15 ),
+        #         iaa.Affine( rotate=-10, scale=(0.8, 1.2), shear=35 ),
+        #         iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
+        #         iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
+        #         sometimes(
+        #             iaa.Affine(
+        #                 scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, individually per axis
+        #                 rotate=(-270, 180), # rotate by -45 to +45 degrees
+        #                 shear=(-16, 16), # shear by -16 to +16 degrees
+        #                 order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
+        #                 cval=(0, 255), # if mode is constant, use a cval between 0 and 255
+        #                 mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+        #         )),
+        #         iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5), # improve or worsen the contrast,
+        #         iaa.GaussianBlur((0, 3.0)),
+        #         iaa.Multiply((1.2, 1.5)), # change brightness, doesn't affect keypoints
+        #         iaa.Affine( rotate=-10, scale=(1.1, 0.8), shear=-15 ), # rotate by exactly 10deg and scale to 50-70%, affects keypoints
+        #         iaa.GaussianBlur((0, 3.0))
+        #     ], random_order=True ),            
+        # ], random_order=True)) 
         iaa.Sequential([
-            iaa.SomeOf((0, 5),[
-                iaa.Affine( rotate=10, scale=(1.2, 1.2), shear=15 ),
-                iaa.Affine( rotate=-35, scale=(1.2, 1.2), shear=-15 ),
-                iaa.Affine( rotate=-10, scale=(0.8, 1.2), shear=35 ),
-                # iaa.Invert(0.05, per_channel=True), # invert color channels
-                iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
-                iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
-            ], random_order=True ),
-            iaa.SomeOf((0, 3),[
-                iaa.Multiply((1.2, 1.5)), # change brightness, doesn't affect keypoints
-                iaa.Affine( rotate=-10, scale=(1.1, 0.8), shear=-15 ), # rotate by exactly 10deg and scale to 50-70%, affects keypoints
-                iaa.GaussianBlur((0, 3.0))
-            ], random_order=True ),
-            sometimes(
-                iaa.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, individually per axis
-                    # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
-                    rotate=(-270, 180), # rotate by -45 to +45 degrees
-                    shear=(-16, 16), # shear by -16 to +16 degrees
-                    order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
-                    cval=(0, 255), # if mode is constant, use a cval between 0 and 255
-                    mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
-            )),
-            iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5), # improve or worsen the contrast,
-            iaa.GaussianBlur((0, 3.0))
-        ], random_order=True)) 
+            iaa.Affine( rotate=(0, 360) )
+        ]))
 
     return seqs
 
 def save_ann( path, ann ):
     text = str(len(ann)) +'\n'
     for a in ann:
-        print(a)
+        # print(a)
         text += ' '.join( [ str(i) for i in a] ) + '\n'
     f = open(path, 'w')
     f.write( text )
@@ -266,11 +209,11 @@ def save_ann( path, ann ):
 
 def save_imgaug( images, imgs_path=None, ann_path=None, count_from=0 ):
     counter = count_from
-    print("Saving images...")
+    # print("Saving images...")
     for data in images:
         for i in data:
             counter += 1
-            print("Saving image #" + str(counter), end=' ', flush=True)
+            # print("Saving image #" + str(counter), end=' ', flush=True)
 
             fname = '{}/img_aug_{}.{}'
             cv.imwrite( fname.format( imgs_path, counter, 'jpeg' ), i[0] )
