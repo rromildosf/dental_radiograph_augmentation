@@ -46,7 +46,7 @@ def make_augumentation( image_coords, seq=None ):
     # use after.x_int and after.y_int to get rounded integer coordinates
     points_aug = []
 
-    w, h = image.shape[:2]
+    h, w = image.shape[:2]
     # print( '{}  {}'.format( w, h ) )
     # print( image_coords[0] )
     for i in range(len(bbs.bounding_boxes)):
@@ -56,28 +56,15 @@ def make_augumentation( image_coords, seq=None ):
         x2 = after.x2_int 
         y2 = after.y2_int 
 
-        bb = [x1, y1, x2, y2]
+        x1 = 0 if x1 < 0 else ( w-1 if x1 >= w else x1 ) 
+        y1 = 0 if y1 < 0 else ( h-1 if y1 >= h else y1 ) 
 
-        x1 = 2 if x1 < 0 else x1 
-        x1 = w-2 if x1 > w else x1 
-
-        y1 = 2 if y1 < 0 else y1 
-        y1 = h-2 if y1 > h else y1 
+        x2 = 0 if x2 < 0 else ( w-1 if x2 >= w else x2 ) 
+        y1 = 0 if y2 < 0 else ( h-1 if y2 >= h else y2 ) 
         
-        x2 = 2 if x2 < 0 else x2
-        x2 = w-2 if x2 > w else x2
-        
-        y2 = 2 if y2 < 0 else y2
-        y2 = h-2 if y2 > h else y2
-        
-        print( image_coords[0] )
-        if image_coords[0] == '308004P09.JPEG':
-            print( '\n\n\n\n{} {} {} {}\n\n\n\n'.format( x1, y1, x2, y2 ))
-
-        if ( x1 < 0 or  x1 > w or x2 < 0 or x2 > w or
-            y1 < 0 or  y1 > h or y2 < 0 or y2 > h ):
-            # print(' ******* Has incorrect boundings.' )
-            raise ValueError(' ******************Has incorrect boundings.')  
+        if ( x1 < 0 or  x1 >= w or x2 < 0 or x2 >= w or
+            y1 < 0 or  y1 >= h or y2 < 0 or y2 >= h ):
+            raise ValueError('Has incorrect boundings.')  
          
         points_aug.append( [x1, y1, x2, y2] )
         
@@ -114,58 +101,6 @@ def show_images( images ):
 def make_augs():
     seqs = []
 
-    # seqs.append(
-    #     iaa.Sequential([
-    #         # iaa.Multiply((1.2, 1.5)), # change brightness, doesn't affect keypoints
-    #         # iaa.Affine( rotate=10, scale=(1.2, 1.2), shear=15 ), # rotate by exactly 10deg and scale to 50-70%, affects keypoints
-    #         iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5), # improve or worsen the contrast
-    #     ]))
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25) # move pixels locally around (with random strengths)
-    #     ]))
-    
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.PiecewiseAffine(scale=(0.01, 0.05)), # sometimes move parts of the image around
-    #     ]))
-    
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.Multiply((1.2, 1.5)), # change brightness, doesn't affect keypoints
-    #         iaa.Affine( rotate=10, scale=(1.2, 1.2), shear=15 ) # rotate by exactly 10deg and scale to 50-70%, affects keypoints
-    #     ]))
-
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.Multiply((1.2, 1.5)), # change brightness, doesn't affect keypoints
-    #         iaa.Affine( rotate=-10, scale=(1.1, 0.8), shear=-15 ) # rotate by exactly 10deg and scale to 50-70%, affects keypoints
-    #     ]))
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.Multiply((0.7, 0.9)), # change brightness, doesn't affect keypoints
-    #         iaa.Affine( rotate=-10 )
-    #     ]))
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.Multiply((0.3, 0.5)), # change brightness, doesn't affect keypoints
-    #         iaa.Fliplr(0.1), iaa.GaussianBlur((0, 3.0))
-    #     ]))
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.GaussianBlur((0, 3.0)), iaa.Affine(translate_px={"x": (-40, 40)})
-    #     ]))
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255))
-    #     ])) 
-    # seqs.append(
-    #     iaa.Sequential([
-    #         iaa.OneOf([
-    #             iaa.EdgeDetect(alpha=(0.5, 1.0)),
-    #             iaa.DirectedEdgeDetect(alpha=(0.5, 1.0), direction=(0.0, 1.0)),
-    #         ]),
-    #     ])) 
     sometimes = lambda aug: iaa.Sometimes(0.5, aug)
 
     seqs.append(
